@@ -55,7 +55,7 @@ st.markdown(
 )
 
 # Hugging Face API setup
-API_KEY = "YOUR_HUGGING_FACE_API_KEY"  # Replace with your API key
+API_KEY = "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"  
 MODEL_URL = "https://api-inference.huggingface.co/models/distilbert/distilgpt2"
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
