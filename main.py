@@ -54,9 +54,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Hugging Face API setup
+# Hugging Face API setup (using your fine-tuned model)
 API_KEY = "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"  
-MODEL_URL = "https://api-inference.huggingface.co/models/distilbert/distilgpt2"
+MODEL_URL = "https://api-inference.huggingface.co/models/rajan3208/uzmi-gpt"
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json",
@@ -64,14 +64,15 @@ HEADERS = {
 
 # Function to generate love quote
 def generate_love_quote(theme):
-    prompt = f"A short, romantic love quote about {theme}, no more than 30 words: "
+    prompt = f"A romantic message about {theme}:\n"
     payload = {
         "inputs": prompt,
         "parameters": {
-            "max_length": 50,  # Slightly higher to account for prompt
-            "num_return_sequences": 1,
-            "temperature": 0.9,  # Balances creativity
-            "top_p": 0.9,  # Ensures diverse but relevant outputs
+            "max_new_tokens": 40,
+            "temperature": 0.9,
+            "top_p": 0.95,
+            "do_sample": True,
+            "return_full_text": False
         },
     }
     
@@ -79,8 +80,7 @@ def generate_love_quote(theme):
         response = requests.post(MODEL_URL, headers=HEADERS, json=payload)
         if response.status_code == 200:
             data = response.json()
-            quote = data[0]["generated_text"].replace(prompt, "").strip()
-            # Basic filter to ensure love-related content
+            quote = data[0]["generated_text"].strip()
             if "love" not in quote.lower() and "heart" not in quote.lower():
                 return "This quote doesn't feel romantic enough. Try again!"
             return quote
@@ -104,7 +104,7 @@ theme = st.sidebar.selectbox(
 if st.button("Generate Love Quote", key="generate"):
     with st.spinner("Crafting a romantic quote..."):
         quote = generate_love_quote(theme)
-        st.session_state["quote"] = quote  # Store quote in session state
+        st.session_state["quote"] = quote
 
 # Display quote if available
 if "quote" in st.session_state:
