@@ -285,7 +285,7 @@ if st.session_state.quotes_history:
     with st.expander("Quote History"):
         for i, (hist_theme, hist_quote) in enumerate(st.session_state.quotes_history):
             st.markdown(f"**Theme:** {hist_theme}")
-            st.markdown(f""{hist_quote}"")
+            st.markdown(f"\"{hist_quote}\"")
             if i < len(st.session_state.quotes_history) - 1:
                 st.markdown("---")
 
