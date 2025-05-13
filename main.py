@@ -272,7 +272,7 @@ with col2:
 
 # Display current quote
 if st.session_state.current_quote:
-    st.markdown(f"<div class='quote-box'>"{st.session_state.current_quote}"</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='quote-box'>\"{st.session_state.current_quote}\"</div>", unsafe_allow_html=True)
     
     # Copy to clipboard button using JavaScript
     st.markdown(get_clipboard_js(st.session_state.current_quote), unsafe_allow_html=True)
