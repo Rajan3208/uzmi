@@ -1,7 +1,7 @@
-streamlit
-requests
-pyperclip
-torch
-transformers
-protobuf
-python-dotenv
+streamlit==1.39.0
+requests==2.32.3
+pyperclip==1.9.0
+torch==2.4.1
+transformers==4.44.2
+protobuf==4.25.5
+python-dotenv==1.0.1
