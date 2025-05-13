@@ -1,3 +1,7 @@
 streamlit
 requests
 pyperclip
+torch
+transformers
+protobuf
+python-dotenv
