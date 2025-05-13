@@ -79,14 +79,27 @@ def generate_love_quote(theme):
     try:
         response = requests.post(MODEL_URL, headers=HEADERS, json=payload)
         if response.status_code == 200:
+            # Fixed response handling
             data = response.json()
-            quote = data[0]["generated_text"].strip()
-            if "love" not in quote.lower() and "heart" not in quote.lower():
-                return "This quote doesn't feel romantic enough. Try again!"
-            return quote
+            # The response format is typically a list with a single item containing generated_text
+            if isinstance(data, list) and len(data) > 0:
+                quote = data[0].get("generated_text", "").strip()
+                if quote and ("love" in quote.lower() or "heart" in quote.lower() or theme.lower() in quote.lower()):
+                    return quote
+                else:
+                    return "This quote doesn't feel romantic enough. Try again!"
+            else:
+                # Alternative format handling
+                if isinstance(data, dict) and "generated_text" in data:
+                    quote = data["generated_text"].strip()
+                    return quote
+                return "Couldn't parse the generated quote. Try again!"
         else:
+            st.error(f"API Error: {response.status_code}")
+            st.error(f"Response: {response.text}")
             return f"Error: Failed to generate quote (Status {response.status_code})."
     except Exception as e:
+        st.error(f"Exception: {str(e)}")
         return f"Error: {str(e)}"
 
 # Streamlit app layout
@@ -110,8 +123,12 @@ if st.button("Generate Love Quote", key="generate"):
 if "quote" in st.session_state:
     st.markdown(f"<div class='quote-box'>{st.session_state['quote']}</div>", unsafe_allow_html=True)
     if st.button("Copy Quote", key="copy"):
-        pyperclip.copy(st.session_state["quote"])
-        st.success("Quote copied to clipboard!")
+        try:
+            pyperclip.copy(st.session_state["quote"])
+            st.success("Quote copied to clipboard!")
+        except Exception as e:
+            st.error(f"Could not copy to clipboard: {str(e)}")
+            st.info("Note: pyperclip may not work in some Streamlit environments like Cloud deployments.")
 
 # Footer
 st.markdown(
