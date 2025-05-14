@@ -1,7 +1,5 @@
 import streamlit as st
-import requests
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import pipeline
 import time
 import base64
 
@@ -90,114 +88,48 @@ if 'current_quote' not in st.session_state:
 if 'loading' not in st.session_state:
     st.session_state.loading = False
 
-# Sidebar for model selection and theme
+# Sidebar for quote settings
 with st.sidebar:
-    st.header("Settings")
-    
-    generation_method = st.radio(
-        "Generation Method:",
-        ["Hugging Face API", "Local Model"]
-    )
-    
-    if generation_method == "Hugging Face API":
-        model_id = st.text_input("Model ID", "rajan3208/uzmi-gpt")
-        api_key = st.text_input("API Key", "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", type="password")
-    else:
-        model_id = st.text_input("Model ID", "rajan3208/uzmi-gpt")
-        st.warning("Loading models locally may use significant memory and take longer to load.")
-
     st.header("Quote Settings")
     theme = st.selectbox(
         "Select a love quote theme:",
         ["romantic", "poetic", "sweet", "passionate", "eternal", "stars", "heart", "forever", "soul mates"]
     )
-    
     max_length = st.slider("Quote Length", 30, 100, 50)
     temperature = st.slider("Creativity", 0.5, 1.0, 0.8)
 
-# Function to generate love quote using Hugging Face API
-def generate_love_quote_api(theme, model_id, api_key, max_length=50, temperature=0.8):
-    API_URL = f"https://api-inference.huggingface.co/models/{model_id}"
-    headers = {"Authorization": f"Bearer {api_key}"}
-    
-    prompt = f"A romantic love quote about {theme}:\n"
-    
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": max_length,
-            "temperature": temperature,
-            "top_p": 0.95,
-            "do_sample": True,
-            "return_full_text": False
-        },
-    }
-    
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if isinstance(data, list) and len(data) > 0:
-                quote = data[0].get("generated_text", "").strip()
-                return quote
-            elif isinstance(data, dict) and "generated_text" in data:
-                return data["generated_text"].strip()
-            else:
-                return f"Unexpected response format: {data}"
-        else:
-            error_details = response.text
-            return f"Error {response.status_code}: {error_details}"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-# Function to generate love quote using local model
+# Function to generate love quote using DistilGPT2
 @st.cache_resource
-def load_model_and_tokenizer(model_id):
+def load_generator():
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
-        model = AutoModelForCausalLM.from_pretrained(model_id)
-        
-        # Move model to GPU if available
-        if torch.cuda.is_available():
-            model = model.to("cuda")
-            
-        return model, tokenizer
+        generator = pipeline('text-generation', model='distilgpt2')
+        return generator
     except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
-        return None, None
+        st.error(f"Error loading DistilGPT2: {str(e)}")
+        return None
 
-def generate_love_quote_local(theme, model_id, max_length=50, temperature=0.8):
-    model, tokenizer = load_model_and_tokenizer(model_id)
+def generate_love_quote(theme, max_length=50, temperature=0.8):
+    generator = load_generator()
     
-    if model is None or tokenizer is None:
-        return "Failed to load the model. Please check the model ID and try again."
+    if generator is None:
+        return "Failed to load DistilGPT2 model."
     
     try:
         prompt = f"A romantic love quote about {theme}:\n"
-        inputs = tokenizer(prompt, return_tensors="pt")
-        
-        # Move inputs to the same device as the model
-        device = next(model.parameters()).device
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-        
-        with torch.no_grad():
-            outputs = model.generate(
-                inputs.input_ids,
-                max_length=max_length,
-                do_sample=True,
-                temperature=temperature,
-                top_p=0.95,
-                num_return_sequences=1,
-                pad_token_id=tokenizer.eos_token_id
-            )
-            
-        generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        output = generator(
+            prompt,
+            max_length=max_length,
+            temperature=temperature,
+            top_p=0.95,
+            do_sample=True,
+            truncation=True
+        )
+        generated_text = output[0]['generated_text'].strip()
         
         # Remove the prompt from the generated text
         if generated_text.startswith(prompt):
             generated_text = generated_text[len(prompt):].strip()
-            
+        
         return generated_text
     except Exception as e:
         return f"Error generating quote: {str(e)}"
@@ -227,7 +159,6 @@ def get_clipboard_js(text):
 # Share buttons
 def share_buttons(quote):
     encoded_quote = base64.b64encode(quote.encode('utf-8')).decode('utf-8')
-    
     twitter_url = f"https://twitter.com/intent/tweet?text={encoded_quote}"
     whatsapp_url = f"https://wa.me/?text={encoded_quote}"
     
@@ -254,17 +185,11 @@ with col2:
         st.session_state.loading = True
         
         with st.spinner("Crafting a romantic quote just for you..."):
-            if generation_method == "Hugging Face API":
-                quote = generate_love_quote_api(theme, model_id, api_key, max_length, temperature)
-            else:
-                quote = generate_love_quote_local(theme, model_id, max_length, temperature)
-            
-            # Add some delay to show the spinner (optional)
-            time.sleep(1)
-            
+            quote = generate_love_quote(theme, max_length, temperature)
+            time.sleep(1)  # Optional delay for spinner
             st.session_state.current_quote = quote
             
-            # Add to history if it's not an error message
+            # Add to history if not an error
             if not quote.startswith("Error"):
                 st.session_state.quotes_history.append((theme, quote))
         
@@ -273,11 +198,7 @@ with col2:
 # Display current quote
 if st.session_state.current_quote:
     st.markdown(f"<div class='quote-box'>\"{st.session_state.current_quote}\"</div>", unsafe_allow_html=True)
-    
-    # Copy to clipboard button using JavaScript
     st.markdown(get_clipboard_js(st.session_state.current_quote), unsafe_allow_html=True)
-    
-    # Share buttons
     st.markdown(share_buttons(st.session_state.current_quote), unsafe_allow_html=True)
 
 # Display quote history
