@@ -1,7 +1,7 @@
 import streamlit as st
 from transformers import pipeline
 import time
-import base64
+import urllib.parse
 
 # Page configuration
 st.set_page_config(
@@ -158,7 +158,7 @@ def get_clipboard_js(text):
 
 # Share buttons
 def share_buttons(quote):
-    encoded_quote = base64.b64encode(quote.encode('utf-8')).decode('utf-8')
+    encoded_quote = urllib.parse.quote(quote)
     twitter_url = f"https://twitter.com/intent/tweet?text={encoded_quote}"
     whatsapp_url = f"https://wa.me/?text={encoded_quote}"
     
